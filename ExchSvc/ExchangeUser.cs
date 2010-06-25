@@ -46,6 +46,17 @@ namespace TALHO
             return Results;
         }
 
+        public static string NewADUser(Dictionary<string, string> attributes)
+        {
+            PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();
+
+            string Results;
+            Results = objManage.NewADUser(attributes);
+
+            objManage = null;
+            return Results;
+        }
+
         public static bool RemoveMailbox(string identity)
         {
             PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();

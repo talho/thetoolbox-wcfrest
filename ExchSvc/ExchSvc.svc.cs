@@ -54,32 +54,67 @@ namespace TALHO
             XmlTextWriter xtw = new XmlTextWriter(sw);
             OperationContext.Current.RequestContext.RequestMessage.WriteMessage(xtw);
             xtw.Flush();
-            xtw.Close();
-            XmlTextReader xtr = new XmlTextReader(new StringReader(sw.ToString()));
-            string s          = xtr.ReadElementString("Binary");
-            string s1         = System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String(s));
-
-            System.Xml.XmlDocument xml_doc = new System.Xml.XmlDocument();
+            xtw.Close(); 
+            XmlTextReader xtr                     = new XmlTextReader(new StringReader(sw.ToString()));
+            string s                              = xtr.ReadElementString("Binary");
+            string s1                             = System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String(s));
+            Dictionary<string, string> attributes = new Dictionary<string,string>();              
+            System.Xml.XmlDocument xml_doc        = new System.Xml.XmlDocument();
             xml_doc.LoadXml(@s1);
-            string alias = xml_doc.SelectSingleNode("/ExchSvc/alias").InnerText;
-            string domain = xml_doc.SelectSingleNode("/ExchSvc/domain").InnerText;
-            string upn = alias + "@" + domain;
 
-            string result = ExchangeUser.EnableMailbox(upn, alias).ToString();
+            attributes.Add("alias",  xml_doc.SelectSingleNode("/ExchSvc/alias").InnerText);
+            attributes.Add("domain", xml_doc.SelectSingleNode("/ExchSvc/domain").InnerText);
+            attributes.Add("upn", xml_doc.SelectSingleNode("/ExchSvc/userPrincipalName").InnerText);
+            attributes.Add("cn", xml_doc.SelectSingleNode("/ExchSvc/cn").InnerText);
+            attributes.Add("name", xml_doc.SelectSingleNode("/ExchSvc/name").InnerText);
+            attributes.Add("displayName", xml_doc.SelectSingleNode("/ExchSvc/displayName").InnerText);
+            attributes.Add("dn" , xml_doc.SelectSingleNode("/ExchSvc/distinguishedName").InnerText);
+            attributes.Add("givenName", xml_doc.SelectSingleNode("/ExchSvc/givenName").InnerText);
+            attributes.Add("samAccountName", xml_doc.SelectSingleNode("/ExchSvc/samAccountName").InnerText);
+            attributes.Add("unicodePwd", xml_doc.SelectSingleNode("/ExchSvc/unicodePwd").InnerText);
+            attributes.Add("sn", xml_doc.SelectSingleNode("/ExchSvc/sn").InnerText);
+            attributes.Add("changePwd", xml_doc.SelectSingleNode("/ExchSvc/changePwd").InnerText);
+            attributes.Add("isVPN", xml_doc.SelectSingleNode("/ExchSvc/isVPN").InnerText);
+            attributes.Add("acctDisabled", xml_doc.SelectSingleNode("/ExchSvc/acctDisabled").InnerText);
+            attributes.Add("pwdExpires", xml_doc.SelectSingleNode("/ExchSvc/pwdExpires").InnerText);
+
+            string newResult = ExchangeUser.NewADUser(attributes);
+            
+            if (newResult.IndexOf("Error") != -1)
+            {
+                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+            }
+            //ExchangeUser userResult = Get(attributes["alias"]);
+            if (attributes["isVPN"] == "1")
+            {
+                attributes["alias"]          = attributes["alias"] + "-vpn";
+                attributes["upn"]            = attributes["upn"].Replace("@", "-vpn@");
+                attributes["dn"]             = attributes["dn"].Replace("OU=TALHO", "OU=VPN");
+                attributes["samAccountName"] = attributes["samAccountName"] + "-vpn";
+                ExchangeUser.NewADUser(attributes);
+            }
+            string exchResult        = ExchangeUser.EnableMailbox(attributes["upn"], attributes["alias"]).ToString();
             XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUser));
-            StringReader textReader = new StringReader(result);
-            ExchangeUser user = (ExchangeUser)serializer.Deserialize(textReader);
-            user.upn = upn;
-            user.alias = alias;
+            StringReader textReader  = new StringReader(exchResult);
+            ExchangeUser user        = (ExchangeUser)serializer.Deserialize(textReader);
+            user.upn                 = attributes["upn"];
+            user.alias               = attributes["alias"];
             textReader.Close();
+            
             return user;
 
         }
+
 
         [WebGet(UriTemplate = "{alias}")]
         public ExchangeUser Get(string alias)
         {
             string result = ExchangeUser.GetUser(alias);
+            if (result == null || result.IndexOf("Error") != -1)
+            {
+                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                return null;
+            }
             XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUser));
             StringReader textReader = new StringReader(result);
             ExchangeUser user = (ExchangeUser)serializer.Deserialize(textReader);
@@ -102,7 +137,7 @@ namespace TALHO
             ExchangeUser result = Get(alias);
             if (result.upn.CompareTo("") == 0)
             {
-                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.Gone;
+                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
             }
             else
             {
@@ -110,7 +145,7 @@ namespace TALHO
                 if (r)
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
                 else
-                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.Gone;
+                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
             }
         }
         
