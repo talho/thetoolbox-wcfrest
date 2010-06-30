@@ -16,6 +16,7 @@ using System.Web.UI.HtmlControls;
 using System.Security;
 using System.Security.Principal;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 using System.EnterpriseServices;
 using System.Management.Automation;
 using System.Xml;
@@ -34,15 +35,24 @@ namespace TALHO
     // NOTE: If the service is renamed, remember to update the global.asax.cs file
     public class ExchSvc
     {
-        [WebGet(UriTemplate = "")]
-        public ExchangeUsers GetCollection()
+        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}")]
+        public ExchangeUsers GetCollection(int current_page, int per_page)
         {
-            string result = ExchangeUser.GetUser("");
-            XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUsers));
+            current_page = current_page < 1 ? 1 : current_page;
+            per_page = per_page < 1 ? 10 : per_page;
+            string result = ExchangeUser.GetUser("",current_page, per_page);
+            string[] seperator = new string[1];
+            seperator[0] = "THEWORLDSLARGESTSEPERATOR";
+            string[] results = result.Split(seperator, StringSplitOptions.RemoveEmptyEntries);
+            result = results[0];
+            XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUserCollection));
             StringReader textReader = new StringReader(result);
-            ExchangeUsers users = (ExchangeUsers)serializer.Deserialize(textReader);
+            ExchangeUserCollection users = (ExchangeUserCollection)serializer.Deserialize(textReader);
             textReader.Close();
-            return users;
+            users.current_page = current_page < 1 ? 1 : current_page; 
+            users.per_page = per_page < 1 ? 10 : per_page;
+            users.total_entries = Int32.Parse(results[1]);
+            return users.toXML();
         }
 
         [OperationContract]
@@ -77,8 +87,9 @@ namespace TALHO
             attributes.Add("isVPN", xml_doc.SelectSingleNode("/ExchSvc/isVPN").InnerText);
             attributes.Add("acctDisabled", xml_doc.SelectSingleNode("/ExchSvc/acctDisabled").InnerText);
             attributes.Add("pwdExpires", xml_doc.SelectSingleNode("/ExchSvc/pwdExpires").InnerText);
+            attributes.Add("ou", xml_doc.SelectSingleNode("/ExchSvc/ou").InnerText);
 
-            string newResult = ExchangeUser.NewADUser(attributes);
+            string newResult = ExchangeUser.NewExchangeUser(attributes);
             
             if (newResult.IndexOf("Error") != -1)
             {
@@ -89,16 +100,16 @@ namespace TALHO
             {
                 attributes["alias"]          = attributes["alias"] + "-vpn";
                 attributes["upn"]            = attributes["upn"].Replace("@", "-vpn@");
-                attributes["dn"]             = attributes["dn"].Replace("OU=TALHO", "OU=VPN");
+                attributes["dn"]             += "OU=VPN";
                 attributes["samAccountName"] = attributes["samAccountName"] + "-vpn";
                 ExchangeUser.NewADUser(attributes);
             }
-            string exchResult        = ExchangeUser.EnableMailbox(attributes["upn"], attributes["alias"]).ToString();
+            //string exchResult        = ExchangeUser.EnableMailbox(attributes["upn"], attributes["alias"]).ToString();
             XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUser));
-            StringReader textReader  = new StringReader(exchResult);
+            StringReader textReader = new StringReader(newResult);
             ExchangeUser user        = (ExchangeUser)serializer.Deserialize(textReader);
-            user.upn                 = attributes["upn"];
-            user.alias               = attributes["alias"];
+            //user.upn                 = attributes["upn"];
+           // user.alias               = attributes["alias"];
             textReader.Close();
             
             return user;
@@ -109,7 +120,7 @@ namespace TALHO
         [WebGet(UriTemplate = "{alias}")]
         public ExchangeUser Get(string alias)
         {
-            string result = ExchangeUser.GetUser(alias);
+            string result = ExchangeUser.GetUser(alias, 0, 0);
             if (result == null || result.IndexOf("Error") != -1)
             {
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
@@ -123,11 +134,9 @@ namespace TALHO
         }
 
         [WebInvoke(UriTemplate = "{id}", Method = "PUT")]
-        public bool Update(string id)
+        public void Update(string id)
         {
-            // TODO: Update the given instance of SampleItem in the collection
-            //throw new NotImplementedException();
-            return true;
+            WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotImplemented;
         }
 
         [OperationContract]
