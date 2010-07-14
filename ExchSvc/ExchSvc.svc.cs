@@ -191,21 +191,23 @@ namespace TALHO
         // method: Web Post HTTP/XML
         // return: void, method sets WebOperationContext status code to OK or Not Found
         [OperationContract]
-        [WebInvoke(UriTemplate = "{alias}/update?password={password}", Method = "POST", BodyStyle = WebMessageBodyStyle.Bare, RequestFormat = WebMessageFormat.Xml)]
-        public void ChangePassword(string alias, string password)
+        [WebInvoke(UriTemplate = "{alias}/update?password={password}&identity={identity}", Method = "POST", BodyStyle = WebMessageBodyStyle.Bare, RequestFormat = WebMessageFormat.Xml)]
+        public void ChangePassword(string alias, string password, string identity)
         {
             Dictionary<string, string> attributes = new Dictionary<string, string>();
   
-            attributes.Add("identity", alias == null ? "" : alias);
+            attributes.Add("identity", identity == null ? "" : identity.Replace("%40", "@"));
             attributes.Add("password", password == null ? "" : password);
 
-            ExchangeUser result = Get(alias);
+            ExchangeUser result = Get(attributes["identity"]);
             if (result.upn.CompareTo("") == 0)
             {
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
             }
             else
             {
+                if(attributes["identity"].IndexOf("-vpn") != -1)
+                    attributes["identity"] = attributes["identity"].Substring(0, attributes["identity"].IndexOf("@"));
                 bool r = ExchangeUser.ChangePassword(attributes);
                 if (r)
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
