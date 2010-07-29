@@ -44,20 +44,39 @@ namespace TALHO
         [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}")]
         public ExchangeUsers GetCollection(int current_page, int per_page)
         {
-            current_page                 = current_page < 1 ? 1 : current_page;
-            per_page                     = per_page < 1 ? 10 : per_page;
-            string result                = ExchangeUser.GetUser("",current_page, per_page);
-            string[] seperator           = new string[1];
-            seperator[0]                 = "THEWORLDSLARGESTSEPERATOR";
-            string[] results             = result.Split(seperator, StringSplitOptions.RemoveEmptyEntries);
-            result                       = results[0];
-            XmlSerializer serializer     = new XmlSerializer(typeof(ExchangeUserCollection));
-            StringReader textReader      = new StringReader(result);
-            ExchangeUserCollection users = (ExchangeUserCollection)serializer.Deserialize(textReader);
-            users.current_page           = current_page < 1 ? 1 : current_page;
-            users.per_page               = per_page < 1 ? 10 : per_page;
-            users.total_entries          = Int32.Parse(results[1]);
-            textReader.Close(); 
+            ExchangeUserCollection users = null;
+            try
+            {
+                current_page = current_page < 1 ? 1 : current_page;
+                per_page = per_page < 1 ? 10 : per_page;
+                string result = ExchangeUser.GetUser("", current_page, per_page);
+                string[] seperator = new string[1];
+                seperator[0] = "THEWORLDSLARGESTSEPERATOR";
+                string[] results = result.Split(seperator, StringSplitOptions.RemoveEmptyEntries);
+                result = results[0];
+
+                //users = new ExchangeUserCollection() { per_page = 1, total_entries = 1, current_page = 1 };
+                //users.Add(new ExchangeUser() { error = result });
+
+                XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUserCollection));
+                StringReader textReader = new StringReader(result);
+                users = (ExchangeUserCollection)serializer.Deserialize(textReader);
+                users.current_page = current_page < 1 ? 1 : current_page;
+                users.per_page = per_page < 1 ? 10 : per_page;
+                users.total_entries = Int32.Parse(results[1]);
+                textReader.Close();
+            }
+            catch (Exception e)
+            {
+                users = new ExchangeUserCollection() { per_page = 1, total_entries = 1, current_page = 1 };
+                ExchangeUser user = new ExchangeUser();
+                while (e != null)
+                {
+                    user.error += e.Message;
+                    e = e.InnerException;
+                }
+                users.Add(user);
+            }
             return users.toXML();
         }
 
@@ -137,16 +156,31 @@ namespace TALHO
         public ExchangeUser Get(string alias)
         {
             string result = ExchangeUser.GetUser(alias, 0, 0);
-            if (result == null || result.IndexOf("Error") != -1)
+            try
             {
-                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
-                return null;
+                if (result == null || result.IndexOf("Error") != -1)
+                {
+                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                    return null;
+                }
+                XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUser));
+                StringReader textReader = new StringReader(result);
+                ExchangeUser user = (ExchangeUser)serializer.Deserialize(textReader);
+                textReader.Close();
+                return user;
             }
-            XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUser));
-            StringReader textReader = new StringReader(result);
-            ExchangeUser user = (ExchangeUser)serializer.Deserialize(textReader);
-            textReader.Close();
-            return user;
+            catch (Exception e)
+            {
+                ExchangeUser user = new ExchangeUser();
+                user.error += result + '\n';
+                while (e != null)
+                {
+                    user.error += e.Message;
+                    e = e.InnerException;
+                }
+
+                return user;
+            }
         }
 
         // Update()
@@ -191,13 +225,25 @@ namespace TALHO
         // method: Web Post HTTP/XML
         // return: void, method sets WebOperationContext status code to OK or Not Found
         [OperationContract]
-        [WebInvoke(UriTemplate = "{alias}/update?password={password}&identity={identity}", Method = "POST", BodyStyle = WebMessageBodyStyle.Bare, RequestFormat = WebMessageFormat.Xml)]
-        public void ChangePassword(string alias, string password, string identity)
+        [WebInvoke(UriTemplate = "{alias}/update", Method = "POST", BodyStyle = WebMessageBodyStyle.Bare, RequestFormat = WebMessageFormat.Xml)]
+        public void ChangePassword(string alias)
         {
             Dictionary<string, string> attributes = new Dictionary<string, string>();
-  
-            attributes.Add("identity", identity == null ? "" : identity.Replace("%40", "@"));
-            attributes.Add("password", password == null ? "" : password);
+            //begin read in xml
+            StringWriter sw = new StringWriter();
+            XmlTextWriter xtw = new XmlTextWriter(sw);
+            OperationContext.Current.RequestContext.RequestMessage.WriteMessage(xtw);
+            xtw.Flush();
+            xtw.Close();
+            XmlTextReader xtr = new XmlTextReader(new StringReader(sw.ToString()));
+            string s = xtr.ReadElementString("Binary");
+            string s1 = System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String(s));
+            System.Xml.XmlDocument xml_doc = new System.Xml.XmlDocument();
+            xml_doc.LoadXml(@s1);
+
+            //read in attributes from xml_doc, store them in Dictionary variable attributes
+            attributes.Add("identity", xml_doc.SelectSingleNode("/ExchSvc/identity") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/identity").InnerText);
+            attributes.Add("password", xml_doc.SelectSingleNode("/ExchSvc/password") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/password").InnerText);
 
             ExchangeUser result = Get(attributes["identity"]);
             if (result.upn.CompareTo("") == 0)
@@ -206,7 +252,7 @@ namespace TALHO
             }
             else
             {
-                if(attributes["identity"].IndexOf("-vpn") != -1)
+                if (attributes["identity"].IndexOf("-vpn") != -1)
                     attributes["identity"] = attributes["identity"].Substring(0, attributes["identity"].IndexOf("@"));
                 bool r = ExchangeUser.ChangePassword(attributes);
                 if (r)
@@ -214,6 +260,6 @@ namespace TALHO
                 else
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
             }
-        }   
+        } 
     }
 }

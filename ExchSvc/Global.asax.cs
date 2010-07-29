@@ -21,6 +21,7 @@ namespace TALHO
         private void RegisterRoutes()
         {
             RouteTable.Routes.Add(new ServiceRoute("ExchSvc", new WebServiceHostFactory(), typeof(ExchSvc)));
+            RouteTable.Routes.Add(new ServiceRoute("DstrSvc", new WebServiceHostFactory(), typeof(DstrSvc)));
         }
     }
 }

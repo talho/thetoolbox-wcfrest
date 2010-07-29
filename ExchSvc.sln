@@ -1,7 +1,8 @@
-
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Web Developer Express 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExchSvc", "ExchSvc\ExchSvc.csproj", "{1F695CCA-103E-4812-AC0B-66056C5D92AD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ToolBoxUtility", "ToolBoxUtility\ToolBoxUtility.csproj", "{C50EE2F4-E350-4677-90A8-72D6B3639DA4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +14,10 @@ Global
 		{1F695CCA-103E-4812-AC0B-66056C5D92AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1F695CCA-103E-4812-AC0B-66056C5D92AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1F695CCA-103E-4812-AC0B-66056C5D92AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C50EE2F4-E350-4677-90A8-72D6B3639DA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C50EE2F4-E350-4677-90A8-72D6B3639DA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C50EE2F4-E350-4677-90A8-72D6B3639DA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C50EE2F4-E350-4677-90A8-72D6B3639DA4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -16,26 +16,38 @@ namespace TALHO
     [DataContract(Name="exchange-user")]
     public class ExchangeUser
     {
+        public ExchangeUser() { }
+
         // Declare public fields
         [DataMember(Name = "alias")]
+        [XmlElement("alias")]
         public string alias { get; set; }
         [DataMember(Name = "dn")]
+        [XmlElement("dn")]
         public string dn { get; set; }
         [DataMember(Name = "cn")]
+        [XmlElement("cn")]
         public string cn { get; set; }
         [DataMember(Name = "upn")]
+        [XmlElement("upn")]
         public string upn { get; set; }
         [DataMember(Name = "mailboxEnabled")]
+        [XmlElement("mailboxEnabled")]
         public bool mailboxEnabled { get; set; }
         [DataMember(Name = "ou")]
+        [XmlElement("ou")]
         public string ou { get; set; }
         [DataMember(Name = "login")]
+        [XmlElement("login")]
         public string login { get; set; }
         [DataMember(Name = "email")]
+        [XmlElement("email")]
         public string email { get; set; }
         [DataMember(Name = "has_vpn")]
+        [XmlElement("has_vpn")]
         public bool has_vpn { get; set; }
         [DataMember(Name = "error")]
+        [XmlElement("error")]
         public string error { get; set; }
 
         // GetUser()
@@ -133,7 +145,7 @@ namespace TALHO
             Results                                          = objManage.DeleteUser(identity);
             objManage                                        = null;
             return Results;
-        }  
+        }
     }
 
     // Class ExchangeUserCollection, can take in a list of ExchangeUser, serialize them, then return an XML with a list of ExchangeUsers
@@ -171,6 +183,8 @@ namespace TALHO
     [XmlRoot(ElementName = "exchange-users")]
     public class ExchangeUsers : IXmlSerializable
     {
+        public ExchangeUsers() { size = 1; current_page = 1; per_page = 1; }
+
         private int size;
         private int current_page;
         private int per_page;
