@@ -21,6 +21,8 @@ using System.EnterpriseServices;
 using System.Management.Automation;
 using System.Xml;
 using System.Xml.Serialization;
+using System.ServiceModel.Channels;
+using ToolBoxUtility;
 
 namespace TALHO
 {
@@ -79,108 +81,53 @@ namespace TALHO
         // method: Web Get
         // return: Serialized XML representation of Distribution object
         [WebGet(UriTemplate = "{identity}")]
-        public DistributionGroup Get(string identity)
+        public Message Get(string identity)
         {
-            DistributionGroup group = null;
+                identity = HttpUtility.UrlDecode(identity);
+                string result = DistributionRepo.GetDistributionGroup(identity, 0, 0);
             try
             {
-                identity = HttpUtility.UrlDecode(identity);
-                string result = DistributionGroup.GetDistributionGroup(identity, 0, 0);
-
                 if (result == null || result.IndexOf("Error") != -1)
                 {
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
                     return null;
                 }
-                XmlSerializer serializer = new XmlSerializer(typeof(DistributionGroup));
-                StringReader textReader = new StringReader(result);
-                group = (DistributionGroup)serializer.Deserialize(textReader);
-                textReader.Close();
+
+                DistributionGroupsShorter shorty = XmlSerializationHelper.Deserialize<DistributionGroupsShorter>(result);
+
+                if (shorty.groups.Count < 1)
+                    return null;
+                else
+                    return MessageBuilder.CreateResponseMessage(shorty.groups[0]);
             }
             catch (Exception e)
             {
-                //string message = "";
-                group = new DistributionGroup();
+                string message = "";                
                 while (e != null)
                 {
-                    group.error += e.Message;
+                    message += e.Message;
                     e = e.InnerException;
                 }
+                return MessageBuilder.CreateResponseMessage(result + message);
             }
-
-            return group;
         }
 
-        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}")]
-        public DistributionGroups GetAll(int current_page, int per_page)
+
+
+        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}", ResponseFormat=WebMessageFormat.Json)]
+        public Message GetAll(int current_page = 1, int per_page = 10)
         {
-            DistributionGroupCollection groups = null;
             try
             {
                 current_page = current_page < 1 ? 1 : current_page;
                 per_page = per_page < 1 ? 10 : per_page;
-                string result = DistributionGroup.GetDistributionGroup("", current_page, per_page);
-                string[] seperator = new string[1];
-                seperator[0] = "THEWORLDSLARGESTSEPERATOR";
-                string[] results = result.Split(seperator, StringSplitOptions.RemoveEmptyEntries);
-                result = results[0];
-
-                //groups = new DistributionGroupCollection() { per_page = 1, total_entries = 1, current_page = 1 };
-                //groups.Add(new DistributionGroup() { error = result });
-
-                XmlSerializer serializer = new XmlSerializer(typeof(DistributionGroupCollection));
-                StringReader textReader = new StringReader(result);
-                groups = (DistributionGroupCollection)serializer.Deserialize(textReader);
-                groups.current_page = current_page < 1 ? 1 : current_page;
-                groups.per_page = per_page < 1 ? 10 : per_page;
-                groups.total_entries = Int32.Parse(results[1]);
+                DistributionGroupsShorter shorty = new DistributionGroupsShorter();
                 
-                textReader.Close();
-            }
-            catch (Exception e)
-            {
-                DistributionGroup group = new DistributionGroup();
-                while (e != null)
-                {
-                    group.error += e.Message;
-                    e = e.InnerException;
-                }
-                groups = new DistributionGroupCollection() { total_entries = 1, per_page = 1, current_page = 1};
-                groups.Add(group);
-            }
+                string result = DistributionRepo.GetDistributionGroup("", current_page, per_page);
 
-            return groups.toXML();
-        }
-
-
-        [WebGet(UriTemplate = "/GetAllTest?page={current_page}&per_page={per_page}")]
-        public XmlElement GetAllTest(int current_page = 1, int per_page = 10)
-        {
-            try
-            {
-                current_page = current_page < 1 ? 1 : current_page;
-                per_page = per_page < 1 ? 10 : per_page;
-                string result = DistributionGroup.GetDistributionGroup("", current_page, per_page);
-                string[] seperator = new string[1];
-                seperator[0] = "THEWORLDSLARGESTSEPERATOR";
-                string[] results = result.Split(seperator, StringSplitOptions.RemoveEmptyEntries);
-                result = results[0];
-                XmlSerializer serializer = new XmlSerializer(typeof(List<DistributionGroup>));
-                StringReader textReader = new StringReader(result);
-                DistributionGroupsShorter shorty = new DistributionGroupsShorter() { groups = (List<DistributionGroup>)serializer.Deserialize(textReader) };
-                shorty.CurrentPage = current_page < 1 ? 1 : current_page;
-                shorty.PerPage = per_page < 1 ? 10 : per_page;
-                shorty.TotalEntries = Int32.Parse(results[1]);
-                textReader.Close();
-
-                StringBuilder res = new StringBuilder();
-                StringWriter sw = new StringWriter(res);
-                serializer = new XmlSerializer(typeof(DistributionGroupsShorter));
-                serializer.Serialize(sw, shorty);
-
-                XmlDocument doc = new XmlDocument();
-                doc.LoadXml(res.ToString());
-                return doc.DocumentElement;
+                shorty = XmlSerializationHelper.Deserialize<DistributionGroupsShorter>(result);
+                  
+                return MessageBuilder.CreateResponseMessage(shorty);
             }
             catch (Exception e)
             {
@@ -191,9 +138,9 @@ namespace TALHO
                     e = e.InnerException;
                 }
                 XmlDocument doc = new XmlDocument();
-                XmlElement elem = doc.CreateElement("elem");
+                XmlElement elem = doc.CreateElement("error");
                 elem.InnerText = message;
-                return elem;
+                return MessageBuilder.CreateResponseMessage(doc);
             }
         }
 
@@ -232,5 +179,46 @@ namespace TALHO
             else
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
         }*/
+
+        //[WebGet(UriTemplate = "/GetAllTest?page={current_page}&per_page={per_page}")]
+        //public DistributionGroups GetAllTest(int current_page, int per_page)
+        //{
+        //    DistributionGroupCollection groups = null;
+        //    try
+        //    {
+        //        current_page = current_page < 1 ? 1 : current_page;
+        //        per_page = per_page < 1 ? 10 : per_page;
+        //        string result = DistributionRepo.GetDistributionGroup("", current_page, per_page);
+        //        string[] seperator = new string[1];
+        //        seperator[0] = "THEWORLDSLARGESTSEPERATOR";
+        //        string[] results = result.Split(seperator, StringSplitOptions.RemoveEmptyEntries);
+        //        result = results[0];
+
+        //        //groups = new DistributionGroupCollection() { per_page = 1, total_entries = 1, current_page = 1 };
+        //        //groups.Add(new DistributionGroup() { error = result });
+
+        //        XmlSerializer serializer = new XmlSerializer(typeof(DistributionGroupCollection));
+        //        StringReader textReader = new StringReader(result);
+        //        groups = (DistributionGroupCollection)serializer.Deserialize(textReader);
+        //        groups.current_page = current_page < 1 ? 1 : current_page;
+        //        groups.per_page = per_page < 1 ? 10 : per_page;
+        //        groups.total_entries = Int32.Parse(results[1]);
+                
+        //        textReader.Close();
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        DistributionGroup group = new DistributionGroup();
+        //        while (e != null)
+        //        {
+        //            group.error += e.Message;
+        //            e = e.InnerException;
+        //        }
+        //        groups = new DistributionGroupCollection() { total_entries = 1, per_page = 1, current_page = 1};
+        //        groups.Add(group);
+        //    }
+
+        //    return groups.toXML();
+        //}
     }
 }

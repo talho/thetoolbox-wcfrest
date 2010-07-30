@@ -21,6 +21,8 @@ using System.EnterpriseServices;
 using System.Management.Automation;
 using System.Xml;
 using System.Xml.Serialization;
+using ToolBoxUtility;
+using System.ServiceModel.Channels;
 
 
 
@@ -42,42 +44,29 @@ namespace TALHO
         // method: Web Get
         // return: ExchangeUsers Object
         [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}")]
-        public ExchangeUsers GetCollection(int current_page, int per_page)
+        public Message GetCollection(int current_page, int per_page)
         {
-            ExchangeUserCollection users = null;
             try
             {
                 current_page = current_page < 1 ? 1 : current_page;
                 per_page = per_page < 1 ? 10 : per_page;
-                string result = ExchangeUser.GetUser("", current_page, per_page);
-                string[] seperator = new string[1];
-                seperator[0] = "THEWORLDSLARGESTSEPERATOR";
-                string[] results = result.Split(seperator, StringSplitOptions.RemoveEmptyEntries);
-                result = results[0];
+                ExchangeUserShorter users = new ExchangeUserShorter();
+                string result = ExchangeRepo.GetUser("", current_page, per_page);
 
-                //users = new ExchangeUserCollection() { per_page = 1, total_entries = 1, current_page = 1 };
-                //users.Add(new ExchangeUser() { error = result });
-
-                XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUserCollection));
-                StringReader textReader = new StringReader(result);
-                users = (ExchangeUserCollection)serializer.Deserialize(textReader);
-                users.current_page = current_page < 1 ? 1 : current_page;
-                users.per_page = per_page < 1 ? 10 : per_page;
-                users.total_entries = Int32.Parse(results[1]);
-                textReader.Close();
+                users = XmlSerializationHelper.Deserialize<ExchangeUserShorter>(result);
+                                
+                return MessageBuilder.CreateResponseMessage(users);
             }
             catch (Exception e)
             {
-                users = new ExchangeUserCollection() { per_page = 1, total_entries = 1, current_page = 1 };
-                ExchangeUser user = new ExchangeUser();
+                string message = "";
                 while (e != null)
                 {
-                    user.error += e.Message;
+                    message += e.Message;
                     e = e.InnerException;
                 }
-                users.Add(user);
+                return MessageBuilder.CreateResponseMessage(message);
             }
-            return users.toXML();
         }
 
         // Create()
@@ -87,7 +76,7 @@ namespace TALHO
         // return: Serialized XML representation of ExchangeUser object
         [OperationContract]
         [WebInvoke(UriTemplate = "/", Method = "POST", BodyStyle = WebMessageBodyStyle.Bare, RequestFormat = WebMessageFormat.Xml, ResponseFormat = WebMessageFormat.Xml)]
-        public ExchangeUser Create()
+        public Message Create()
         {
             //begin read in xml
             StringWriter sw     = new StringWriter();
@@ -122,7 +111,7 @@ namespace TALHO
             attributes.Add("ou", xml_doc.SelectSingleNode("/ExchSvc/ou") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/ou").InnerText);
 
             //Call NewExchangeUser on ExchangeUser class
-            string exchangeResult = ExchangeUser.NewExchangeUser(attributes);
+            string exchangeResult = ExchangeRepo.NewExchangeUser(attributes);
 
             if (exchangeResult.IndexOf("Error") != -1)
             {
@@ -134,17 +123,16 @@ namespace TALHO
                 attributes["upn"]            = attributes["upn"].Replace("@", "-vpn@");
                 attributes["dn"]             = attributes["dn"].Replace("OU=TALHO", "OU=VPN,OU=TALHO");
                 attributes["samAccountName"] = attributes["samAccountName"] + "-vpn";
-                activeResult                 = ExchangeUser.NewADUser(attributes);
+                activeResult                 = ExchangeRepo.NewADUser(attributes);
                 if (activeResult.IndexOf("Error") != -1)
                 {
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
                 }
             }
-            XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUser));
-            StringReader textReader  = new StringReader(exchangeResult);
-            ExchangeUser user        = (ExchangeUser)serializer.Deserialize(textReader);
-            textReader.Close();
-            return user;
+
+            ExchangeUser user = XmlSerializationHelper.Deserialize<ExchangeUser>(exchangeResult);
+            
+            return MessageBuilder.CreateResponseMessage(user);
         }
 
         // Get()
@@ -153,34 +141,36 @@ namespace TALHO
         // method: Web Get
         // return: Serialized XML representation of ExchangeUser object
         [WebGet(UriTemplate = "{alias}")]
-        public ExchangeUser Get(string alias)
+        public Message Get(string alias)
         {
-            string result = ExchangeUser.GetUser(alias, 0, 0);
             try
-            {
-                if (result == null || result.IndexOf("Error") != -1)
-                {
-                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
-                    return null;
-                }
-                XmlSerializer serializer = new XmlSerializer(typeof(ExchangeUser));
-                StringReader textReader = new StringReader(result);
-                ExchangeUser user = (ExchangeUser)serializer.Deserialize(textReader);
-                textReader.Close();
-                return user;
+            {                
+                return MessageBuilder.CreateResponseMessage(GetUser(alias));
             }
             catch (Exception e)
             {
-                ExchangeUser user = new ExchangeUser();
-                user.error += result + '\n';
+                string message = "";
                 while (e != null)
                 {
-                    user.error += e.Message;
+                    message += e.Message;
                     e = e.InnerException;
                 }
 
-                return user;
+                return MessageBuilder.CreateResponseMessage(message);
             }
+        }
+
+        private ExchangeUser GetUser(string alias)
+        {
+            string result = ExchangeRepo.GetUser(alias, 0, 0);
+            if (result == null || result.IndexOf("Error") != -1)
+            {
+                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                return null;
+            }
+
+            ExchangeUser user = XmlSerializationHelper.Deserialize<ExchangeUser>(result);
+            return user;
         }
 
         // Update()
@@ -203,14 +193,14 @@ namespace TALHO
         [WebInvoke(UriTemplate = "{alias}/delete", Method = "POST")]
         public void Delete(string alias)
         {
-            ExchangeUser result = Get(alias);
+            ExchangeUser result = GetUser(alias);
             if (result.upn.CompareTo("") == 0)
             {
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
             }
             else
             {
-                bool r = ExchangeUser.RemoveMailbox(alias);
+                bool r = ExchangeRepo.RemoveMailbox(alias);
                 if (r)
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
                 else
@@ -245,7 +235,7 @@ namespace TALHO
             attributes.Add("identity", xml_doc.SelectSingleNode("/ExchSvc/identity") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/identity").InnerText);
             attributes.Add("password", xml_doc.SelectSingleNode("/ExchSvc/password") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/password").InnerText);
 
-            ExchangeUser result = Get(attributes["identity"]);
+            ExchangeUser result = GetUser(attributes["identity"]);
             if (result.upn.CompareTo("") == 0)
             {
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
@@ -254,7 +244,7 @@ namespace TALHO
             {
                 if (attributes["identity"].IndexOf("-vpn") != -1)
                     attributes["identity"] = attributes["identity"].Substring(0, attributes["identity"].IndexOf("@"));
-                bool r = ExchangeUser.ChangePassword(attributes);
+                bool r = ExchangeRepo.ChangePassword(attributes);
                 if (r)
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
                 else
