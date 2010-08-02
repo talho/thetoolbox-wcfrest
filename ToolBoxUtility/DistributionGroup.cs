@@ -21,6 +21,9 @@ namespace ToolBoxUtility
             error = "";
         }
 
+        [XmlElement("id")]
+        public string Alias { get; set; }
+
         [DataMember(Name = "name")]
         [XmlElement("name")]
         public string Name { get; set; }
@@ -38,11 +41,80 @@ namespace ToolBoxUtility
         public string error { get; set; }
 
         [DataMember(Name = "exchange-users")]
-        [XmlArray("users")]
-        [XmlArrayItem("ExchangeUser")]
-        public List<ExchangeUser> users { get; set; }
+        [XmlElement("ExchangeUsers")]
+        public ExchangeUserMembers users { get; set; }
+
+        [XmlElement("ou")]
+        public string OrganizationalUnit { get; set; }
     }
 
+    [XmlRoot("distribution-groups")]
+    public class DistributionGroupsShorter
+    {
+
+        [XmlAttribute("current_page")]
+        public string CurrentPageDisplay
+        {
+            get { return CurrentPage.HasValue && CurrentPage.Value > 0 ? CurrentPage.Value.ToString() : null; }
+            set
+            {
+                int val;
+                if (int.TryParse(value, out val))
+                {
+                    CurrentPage = val;
+                }
+                else
+                {
+                    CurrentPage = null;
+                }
+            }
+        }
+
+        [XmlIgnore]
+        public int? CurrentPage { get; set; }
+        
+        [XmlAttribute("per_page")]
+        public string PerPageDisplay
+        {
+            get { return PerPage.HasValue && PerPage.Value > 0 ? PerPage.Value.ToString() : null; }
+            set
+            {
+                int val;
+                if (int.TryParse(value, out val))
+                {
+                    PerPage = val;
+                }
+                else
+                {
+                    PerPage = null;
+                }
+            }
+        }
+
+        [XmlIgnore]
+        public int? PerPage { get; set; }
+
+        [XmlAttribute("total_entries")]
+        public int TotalEntries { get; set; }
+
+        [XmlAttribute("type")]
+        public string type = "array";
+
+        [XmlElement("distribution-group")]
+        public List<DistributionGroup> groups { get; set; }
+    }
+
+    [XmlRoot("DstrSvc")]
+    public class DistributionGroupCreationParams
+    {
+        [XmlElement("group-name")]
+        public string Name { get; set; }
+
+        [XmlElement("ou")]
+        public string OrganizationalUnit { get; set; }
+    }
+
+    /*
     // Class DistributionGroupCollection, can take in a list of DistributionGroup, serialize them, then return an XML with a list of DistributionGroups
     public class DistributionGroupCollection : List<DistributionGroup>
     {
@@ -122,21 +194,5 @@ namespace ToolBoxUtility
         }
         #endregion
     }
-
-    [XmlRoot("distribution-groups")]
-    public class DistributionGroupsShorter
-    {
-        [XmlAttribute("current_page")]
-        public int CurrentPage { get; set; }
-        [XmlAttribute("per_page")]
-        public int PerPage { get; set; }
-        [XmlAttribute("total_entries")]
-        public int TotalEntries { get; set; }
-
-        [XmlAttribute("type")]
-        public string type = "array";
-
-        [XmlElement("distribution-group")]
-        public List<DistributionGroup> groups { get; set; }
-    }
+    */
 }

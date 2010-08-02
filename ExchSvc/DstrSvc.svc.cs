@@ -43,36 +43,21 @@ namespace TALHO
         // return: DistributionGroup Object
         [OperationContract]
         [WebInvoke(UriTemplate = "/", Method = "POST", BodyStyle = WebMessageBodyStyle.Bare, RequestFormat = WebMessageFormat.Xml, ResponseFormat = WebMessageFormat.Xml)]
-        public DistributionGroup Create()
+        public Message Create(Stream body)
         {
-            //begin read in xml
-            /*
-            StringWriter sw = new StringWriter();
-            XmlTextWriter xtw = new XmlTextWriter(sw);
-            OperationContext.Current.RequestContext.RequestMessage.WriteMessage(xtw);
-            xtw.Flush();
-            xtw.Close();
-            XmlTextReader xtr = new XmlTextReader(new StringReader(sw.ToString()));
-            string s = xtr.ReadElementString("Binary");
-            string s1 = System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String(s));
-            System.Xml.XmlDocument xml_doc = new System.Xml.XmlDocument();
-            xml_doc.LoadXml(@s1);
+            StreamReader rd = new StreamReader(body);
+            string bodyXml = rd.ReadToEnd();
+            DistributionGroupCreationParams parms = XmlSerializationHelper.Deserialize<DistributionGroupCreationParams>(bodyXml);
 
-            //read in attributes from xml_doc, store them in Dictionary variable attributes
-            string group_name = xml_doc.SelectSingleNode("/distribution-group/group-name") == null ? "" : xml_doc.SelectSingleNode("/distribution-group/group-name").InnerText;
-            string ou = xml_doc.SelectSingleNode("/distribution-group/ou") == null ? "" : xml_doc.SelectSingleNode("/distribution-group/ou").InnerText;
-
-            string result = DistributionGroup.CreateDistributionGroup(group_name, ou);
-            if (result.IndexOf("Error") != -1)
+            //begin read in xml           
+            string result = DistributionRepo.CreateDistributionGroup(parms.Name, parms.OrganizationalUnit);
+            DistributionGroup group = XmlSerializationHelper.Deserialize<DistributionGroup>(result);
+            if (group.error != "")
             {
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
             }
-             * */
-            XmlSerializer serializer = new XmlSerializer(typeof(DistributionGroup));
-            StringReader textReader  = new StringReader("");
-            DistributionGroup group        = (DistributionGroup)serializer.Deserialize(textReader);
-            textReader.Close();
-            return group;
+
+            return MessageBuilder.CreateResponseMessage(group);
         }
 
         // Get()
@@ -111,16 +96,14 @@ namespace TALHO
                 return MessageBuilder.CreateResponseMessage(result + message);
             }
         }
-
-
-
-        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}", ResponseFormat=WebMessageFormat.Json)]
-        public Message GetAll(int current_page = 1, int per_page = 10)
+        
+        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}")]
+        public Message GetAll(int current_page = 0, int per_page = 0)
         {
             try
             {
-                current_page = current_page < 1 ? 1 : current_page;
-                per_page = per_page < 1 ? 10 : per_page;
+                //current_page = current_page < 1 ? 1 : current_page;
+                //per_page = per_page < 1 ? 10 : per_page;
                 DistributionGroupsShorter shorty = new DistributionGroupsShorter();
                 
                 string result = DistributionRepo.GetDistributionGroup("", current_page, per_page);
@@ -141,6 +124,30 @@ namespace TALHO
                 XmlElement elem = doc.CreateElement("error");
                 elem.InnerText = message;
                 return MessageBuilder.CreateResponseMessage(doc);
+            }
+        }
+
+        [WebInvoke(UriTemplate = "{identity}/update", Method = "POST")]
+        public Message Update(string identity, Stream body)
+        {
+            identity = identity.Replace("+", " ");
+            StreamReader rd = new StreamReader(body);
+            string bodyXml = rd.ReadToEnd().Replace("DstrSvc", "distribution-group");
+
+            try
+            {
+                DistributionGroup updated = DistributionRepo.UpdateDistributionGroup(XmlSerializationHelper.Deserialize<DistributionGroup>(bodyXml));
+                return MessageBuilder.CreateResponseMessage(updated);
+            }
+            catch (Exception e)
+            {
+                string message = "";
+                while (e != null)
+                {
+                    message += e.Message;
+                    e = e.InnerException;
+                }
+                return MessageBuilder.CreateResponseMessage(message);
             }
         }
 

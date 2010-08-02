@@ -50,6 +50,7 @@
   <ItemGroup>
     <Compile Include="DistributionGroup.cs" />
     <Compile Include="ExchangeUser.cs" />
+    <Compile Include="LambdaEqualityComparer.cs" />
     <Compile Include="MessageBuilder.cs" />
     <Compile Include="XmlSerializationHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -8,6 +8,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
+using ToolBoxUtility;
 
 namespace TALHO
 {
@@ -58,6 +59,13 @@ namespace TALHO
             Results = objManage.AddToDistributionGroup(group_name, alias);
             objManage = null;
             return Results;
+        }
+
+        public static DistributionGroup UpdateDistributionGroup(DistributionGroup group)
+        {
+            PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();
+            string updatedGroupXml = objManage.UpdateDistributionGroup(XmlSerializationHelper.Serialize(group));
+            return XmlSerializationHelper.Deserialize<DistributionGroup>(updatedGroupXml);
         }
 
         // CreateMailContact()

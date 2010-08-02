@@ -17,9 +17,14 @@ namespace ToolBoxUtility
     [XmlRoot("exchange-user")]
     public class ExchangeUser
     {
-        public ExchangeUser() { }
+        public ExchangeUser() { error = ""; }
 
         // Declare public fields
+        [XmlElement("identity")]
+        public string identity { get; set; }
+        [XmlElement("password")]
+        public string password { get; set; }
+
         [DataMember(Name = "alias")]
         [XmlElement("alias")]
         public string alias { get; set; }
@@ -45,11 +50,13 @@ namespace ToolBoxUtility
         [XmlElement("email")]
         public string email { get; set; }
         [DataMember(Name = "has_vpn")]
-        [XmlElement("has_vpn")]
+        [XmlElement("has-vpn")]
         public bool has_vpn { get; set; }
         [DataMember(Name = "error")]
         [XmlElement("error")]
-        public string error { get; set; }        
+        public string error { get; set; }
+        [XmlElement("type")]
+        public string type { get; set; }
     }
 
     // Class ExchangeUserCollection, can take in a list of ExchangeUser, serialize them, then return an XML with a list of ExchangeUsers
@@ -148,6 +155,16 @@ namespace ToolBoxUtility
         public string type = "array";
 
         [XmlElement("exchange-user")]
+        public List<ExchangeUser> users { get; set; }
+    }
+
+    [XmlRoot("ExchangeUsers")]
+    public class ExchangeUserMembers
+    {
+        [XmlAttribute("type")]
+        public string type = "array";
+
+        [XmlElement("ExchangeUser")]
         public List<ExchangeUser> users { get; set; }
     }
 }

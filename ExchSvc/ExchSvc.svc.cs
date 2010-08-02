@@ -216,40 +216,54 @@ namespace TALHO
         // return: void, method sets WebOperationContext status code to OK or Not Found
         [OperationContract]
         [WebInvoke(UriTemplate = "{alias}/update", Method = "POST", BodyStyle = WebMessageBodyStyle.Bare, RequestFormat = WebMessageFormat.Xml)]
-        public void ChangePassword(string alias)
+        public void ChangePassword(string alias, Stream Body)
         {
-            Dictionary<string, string> attributes = new Dictionary<string, string>();
-            //begin read in xml
-            StringWriter sw = new StringWriter();
-            XmlTextWriter xtw = new XmlTextWriter(sw);
-            OperationContext.Current.RequestContext.RequestMessage.WriteMessage(xtw);
-            xtw.Flush();
-            xtw.Close();
-            XmlTextReader xtr = new XmlTextReader(new StringReader(sw.ToString()));
-            string s = xtr.ReadElementString("Binary");
-            string s1 = System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String(s));
-            System.Xml.XmlDocument xml_doc = new System.Xml.XmlDocument();
-            xml_doc.LoadXml(@s1);
+            XmlDocument xml_doc = new XmlDocument();
+            StreamReader sr = new StreamReader(Body);
 
-            //read in attributes from xml_doc, store them in Dictionary variable attributes
-            attributes.Add("identity", xml_doc.SelectSingleNode("/ExchSvc/identity") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/identity").InnerText);
-            attributes.Add("password", xml_doc.SelectSingleNode("/ExchSvc/password") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/password").InnerText);
+            ExchangeUser user = XmlSerializationHelper.Deserialize<ExchangeUser>(sr.ReadToEnd().Replace("ExchSvc", "exchange-user"));
 
-            ExchangeUser result = GetUser(attributes["identity"]);
+            if (user.identity != null && user.identity.IndexOf("-vpn") != -1)
+                user.identity = user.identity.Substring(0, user.identity.IndexOf("-vpn"));
+
+            string identity = user.alias != null && user.alias != "" ? user.alias : (user.login != null && user.login != "" ? user.login : user.identity);
+
+            ExchangeUser result = GetUser(identity);
             if (result.upn.CompareTo("") == 0)
             {
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
             }
             else
             {
-                if (attributes["identity"].IndexOf("-vpn") != -1)
-                    attributes["identity"] = attributes["identity"].Substring(0, attributes["identity"].IndexOf("@"));
-                bool r = ExchangeRepo.ChangePassword(attributes);
+                bool r = ExchangeRepo.ChangePassword(identity, user.password);
                 if (r)
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
                 else
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
             }
-        } 
+        }
+
+        [OperationContract]
+        [WebInvoke(UriTemplate = "contact", Method = "POST")]
+        public Message CreateMailContact(Stream body)
+        {
+            try
+            {
+                StreamReader sr = new StreamReader(body);
+                ExchangeUser newContact = XmlSerializationHelper.Deserialize<ExchangeUser>(sr.ReadToEnd());
+                return MessageBuilder.CreateResponseMessage(DistributionRepo.CreateMailContact(newContact.cn, newContact.email, newContact.ou));
+            }
+            catch (Exception e)
+            {
+                string message = "";
+                while (e != null)
+                {
+                    message += e.Message;
+                    e = e.InnerException;
+                }
+
+                return MessageBuilder.CreateResponseMessage(message);
+            }
+        }
     }
 }

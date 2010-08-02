@@ -89,11 +89,11 @@ namespace TALHO
         // params: Dictionary<string, string> attributes - Dictionary object, contains attributes to change user password
         // method: public
         // return: bool
-        public static bool ChangePassword(Dictionary<string, string> attributes)
+        public static bool ChangePassword(string identity, string password)
         {
             bool Results;
             PowerShellComponent.ManagementCommands objManange = new PowerShellComponent.ManagementCommands();
-            Results                                           = objManange.ChangePassword(attributes);
+            Results                                           = objManange.ChangePassword(identity, password);
             objManange                                        = null;
             return Results;
         }
