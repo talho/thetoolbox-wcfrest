@@ -46,12 +46,14 @@ namespace ToolBoxUtility
 
         [XmlElement("ou")]
         public string OrganizationalUnit { get; set; }
+
+        [XmlElement("has_children")]
+        public bool HasChildren { get; set; }
     }
 
     [XmlRoot("distribution-groups")]
     public class DistributionGroupsShorter
     {
-
         [XmlAttribute("current_page")]
         public string CurrentPageDisplay
         {
