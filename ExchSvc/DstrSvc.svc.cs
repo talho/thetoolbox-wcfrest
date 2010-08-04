@@ -151,6 +151,31 @@ namespace TALHO
             }
         }
 
+        [WebInvoke(UriTemplate = "{identity}/delete", Method = "POST")]
+        public Message Delete(string identity, Stream body)
+        {
+            identity = identity.Replace("+", " ");
+            StreamReader rd = new StreamReader(body);
+            string bodyXml = rd.ReadToEnd().Replace("DstrSvc", "distribution-group");
+            
+            try
+            {
+                DistributionRepo.DeleteDistributionGroup(XmlSerializationHelper.Deserialize<DistributionGroup>(bodyXml));
+                return MessageBuilder.CreateResponseMessage(true);
+            }
+            catch (Exception e)
+            {
+                string message = "";
+                while (e != null)
+                {
+                    message += e.Message;
+                    e = e.InnerException;
+                } 
+                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.InternalServerError;
+                return MessageBuilder.CreateResponseMessage(message);
+            }
+        }
+
         // CreateMailContact
         // desc: Method creates a new mail contact
         // params: string name  - Name of mail contact

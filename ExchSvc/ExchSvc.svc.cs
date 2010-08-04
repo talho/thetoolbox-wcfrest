@@ -191,20 +191,37 @@ namespace TALHO
         // return: void, method sets WebOperationContext status code to either OK on success or Not Found on failure
         [OperationContract]
         [WebInvoke(UriTemplate = "{alias}/delete", Method = "POST")]
-        public void Delete(string alias)
+        public void Delete(string alias, Stream body)
         {
-            ExchangeUser result = GetUser(alias);
-            if (result.upn.CompareTo("") == 0)
+            StreamReader rd = new StreamReader(body);
+            string bodyXml = rd.ReadToEnd().Replace("ExchSvc", "exchange-user");
+
+            ExchangeUser user = null;
+            if (bodyXml != "")
             {
-                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                user = XmlSerializationHelper.Deserialize<ExchangeUser>(bodyXml);
+            }
+
+            if (user != null && user.type == "MailContact")
+            {
+                // We should handle the mail contact delete action here, otherwise, let it fall.
+                ExchangeRepo.DeleteMailContact(user.alias);
             }
             else
             {
-                bool r = ExchangeRepo.RemoveMailbox(alias);
-                if (r)
-                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
-                else
+                ExchangeUser result = GetUser(alias);
+                if (result.upn.CompareTo("") == 0)
+                {
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                }
+                else
+                {
+                    bool r = ExchangeRepo.RemoveMailbox(alias);
+                    if (r)
+                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
+                    else
+                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                }
             }
         }
 

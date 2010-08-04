@@ -83,6 +83,12 @@ namespace TALHO
             objManage = null;
             return Results;
         }
+
+        public static void DeleteDistributionGroup(DistributionGroup group)
+        {
+            PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();
+            objManage.DeleteDistributionGroup(XmlSerializationHelper.Serialize(group));
+        }
     }
 
 }
