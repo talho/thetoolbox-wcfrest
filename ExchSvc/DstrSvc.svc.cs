@@ -137,17 +137,27 @@ namespace TALHO
             try
             {
                 DistributionGroup updated = DistributionRepo.UpdateDistributionGroup(XmlSerializationHelper.Deserialize<DistributionGroup>(bodyXml));
+  
                 return MessageBuilder.CreateResponseMessage(updated);
             }
             catch (Exception e)
             {
-                string message = "";
-                while (e != null)
+                if (e.Message == "Contact Conflict")
                 {
-                    message += e.Message;
-                    e = e.InnerException;
+                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.Conflict;
+                    return MessageBuilder.CreateResponseMessage(e.Message);
                 }
-                return MessageBuilder.CreateResponseMessage(message);
+                else
+                {
+                    string message = "";
+                    while (e != null)
+                    {
+                        message += e.Message;
+                        e = e.InnerException;
+                    }
+                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.InternalServerError;                
+                    return MessageBuilder.CreateResponseMessage(message);
+                }
             }
         }
 
