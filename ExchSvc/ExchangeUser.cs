@@ -117,5 +117,14 @@ namespace TALHO
             PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();
             objManage.DeleteMailContact(alias);
         }
+
+        internal static bool RemoveADUser(string identity)
+        {
+            bool Results;
+            PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();
+            Results = objManage.DeleteADUser(identity);
+            objManage = null;
+            return Results;
+        }
     }
 }

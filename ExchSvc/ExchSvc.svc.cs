@@ -116,6 +116,7 @@ namespace TALHO
             if (exchangeResult.IndexOf("Error") != -1)
             {
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                return MessageBuilder.CreateResponseMessage(exchangeResult);
             }
             if (attributes["isVPN"] == "1")
             {
@@ -127,6 +128,7 @@ namespace TALHO
                 if (activeResult.IndexOf("Error") != -1)
                 {
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                    return MessageBuilder.CreateResponseMessage(activeResult);
                 }
             }
 
@@ -191,7 +193,7 @@ namespace TALHO
         // return: void, method sets WebOperationContext status code to either OK on success or Not Found on failure
         [OperationContract]
         [WebInvoke(UriTemplate = "{alias}/delete", Method = "POST")]
-        public void Delete(string alias, Stream body)
+        public Message Delete(string alias, Stream body)
         {
             StreamReader rd = new StreamReader(body);
             string bodyXml = rd.ReadToEnd().Replace("ExchSvc", "exchange-user");
@@ -216,13 +218,27 @@ namespace TALHO
                 }
                 else
                 {
-                    bool r = ExchangeRepo.RemoveMailbox(alias);
-                    if (r)
-                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
-                    else
-                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                    try
+                    {
+                        bool r = ExchangeRepo.RemoveMailbox(alias);
+                        if (r && result.has_vpn)
+                        {
+                            r = ExchangeRepo.RemoveADUser(alias + "-vpn");
+                        }
+                        if (r)
+                            WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
+                        else
+                            WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                    }
+                    catch (Exception e)
+                    {
+                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.InternalServerError;
+                        return MessageBuilder.CreateResponseMessage(e.Message);
+                    }
                 }
             }
+
+            return MessageBuilder.CreateResponseMessage(true);
         }
 
         // ChangePassword()
