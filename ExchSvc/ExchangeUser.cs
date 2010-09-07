@@ -8,6 +8,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
+using ToolBoxUtility;
 
 // Scope TALHO
 namespace TALHO
@@ -22,11 +23,11 @@ namespace TALHO
         //         int per_page     - Number of entries to return per page
         // method: public 
         // return: string, XML string of ExchangeUser object
-        public static string GetUser(string thealias, int current_page, int per_page)
+        public static string GetUser(string thealias, int current_page, int per_page, bool vpn_only)
         {
             string result;
             PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();
-            result                                           = objManage.GetUser(thealias, current_page, per_page);
+            result                                           = objManage.GetUser(thealias, current_page, per_page, vpn_only);
             objManage                                        = null;
             return result;
         }
@@ -116,6 +117,12 @@ namespace TALHO
         {
             PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();
             objManage.DeleteMailContact(alias);
+        }
+
+        public static ExchangeUser GetMailContact(ExchangeUser user)
+        {
+            PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();
+            return XmlSerializationHelper.Deserialize<ExchangeUser>(objManage.GetSerializedMailContact(XmlSerializationHelper.Serialize(user)));
         }
 
         internal static bool RemoveADUser(string identity)

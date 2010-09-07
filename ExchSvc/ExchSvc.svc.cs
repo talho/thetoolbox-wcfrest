@@ -43,15 +43,15 @@ namespace TALHO
         //         int per_page     - Results per page to return, defaults to 10
         // method: Web Get
         // return: ExchangeUsers Object
-        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}")]
-        public Message GetCollection(int current_page, int per_page)
+        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}&vpn_only={vpn_only}")]
+        public Message GetCollection(int current_page, int per_page, bool vpn_only)
         {
             try
             {
                 current_page = current_page < 1 ? 1 : current_page;
                 per_page = per_page < 1 ? 10 : per_page;
                 ExchangeUserShorter users = new ExchangeUserShorter();
-                string result = ExchangeRepo.GetUser("", current_page, per_page);
+                string result = ExchangeRepo.GetUser("", current_page, per_page, vpn_only);
 
                 users = XmlSerializationHelper.Deserialize<ExchangeUserShorter>(result);
                                 
@@ -80,6 +80,7 @@ namespace TALHO
         {
             //begin read in xml
             StringWriter sw     = new StringWriter();
+            ExchangeUser user = new ExchangeUser();
             XmlTextWriter xtw   = new XmlTextWriter(sw);
             string activeResult = "";
             OperationContext.Current.RequestContext.RequestMessage.WriteMessage(xtw);
@@ -109,16 +110,10 @@ namespace TALHO
             attributes.Add("acctDisabled", xml_doc.SelectSingleNode("/ExchSvc/acctDisabled") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/acctDisabled").InnerText);
             attributes.Add("pwdExpires", xml_doc.SelectSingleNode("/ExchSvc/pwdExpires") == null ? "1" : xml_doc.SelectSingleNode("/ExchSvc/pwdExpires").InnerText);
             attributes.Add("ou", xml_doc.SelectSingleNode("/ExchSvc/ou") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/ou").InnerText);
+            attributes.Add("vpnUsr", xml_doc.SelectSingleNode("/ExchSvc/vpnUsr") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/vpnUsr").InnerText);
 
-            //Call NewExchangeUser on ExchangeUser class
-            string exchangeResult = ExchangeRepo.NewExchangeUser(attributes);
-
-            if (exchangeResult.IndexOf("Error") != -1)
-            {
-                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
-                return MessageBuilder.CreateResponseMessage(exchangeResult);
-            }
-            if (attributes["isVPN"] == "1")
+            
+            if (attributes["vpnUsr"] == "true")
             {
                 attributes["alias"]          = attributes["alias"] + "-vpn";
                 attributes["upn"]            = attributes["upn"].Replace("@", "-vpn@");
@@ -130,10 +125,32 @@ namespace TALHO
                     WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
                     return MessageBuilder.CreateResponseMessage(activeResult);
                 }
+                user = XmlSerializationHelper.Deserialize<ExchangeUser>(activeResult);
             }
-
-            ExchangeUser user = XmlSerializationHelper.Deserialize<ExchangeUser>(exchangeResult);
-            
+            else
+            {
+                //Call NewExchangeUser on ExchangeUser class
+                string exchangeResult = ExchangeRepo.NewExchangeUser(attributes);
+                if (exchangeResult.IndexOf("Error") != -1)
+                {
+                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                    return MessageBuilder.CreateResponseMessage(exchangeResult);
+                 }
+                if (attributes["isVPN"] == "1")
+                {
+                    attributes["alias"]          = attributes["alias"] + "-vpn";
+                    attributes["upn"]            = attributes["upn"].Replace("@", "-vpn@");
+                    attributes["dn"]             = attributes["dn"].Replace("OU=TALHO", "OU=VPN,OU=TALHO");
+                    attributes["samAccountName"] = attributes["samAccountName"] + "-vpn";
+                    activeResult                 = ExchangeRepo.NewADUser(attributes);
+                    if (activeResult.IndexOf("Error") != -1)
+                    {
+                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                        return MessageBuilder.CreateResponseMessage(activeResult);
+                    }
+                }
+                user = XmlSerializationHelper.Deserialize<ExchangeUser>(exchangeResult);
+            }
             return MessageBuilder.CreateResponseMessage(user);
         }
 
@@ -164,7 +181,16 @@ namespace TALHO
 
         private ExchangeUser GetUser(string alias)
         {
-            string result = ExchangeRepo.GetUser(alias, 0, 0);
+            string result = null;
+            if (alias.IndexOf("-vpn") != -1)
+            {
+                result = ExchangeRepo.GetUser(alias, 0, 0, true);
+            }
+            else
+            {
+                result = ExchangeRepo.GetUser(alias, 0, 0, false);
+            }
+            
             if (result == null || result.IndexOf("Error") != -1)
             {
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
@@ -211,31 +237,43 @@ namespace TALHO
             }
             else
             {
-                ExchangeUser result = GetUser(alias);
-                if (result.upn.CompareTo("") == 0)
+                if (alias.IndexOf("-vpn") != -1)
                 {
-                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                    bool r = ExchangeRepo.RemoveADUser(alias);
+                    if (r)
+                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
+                    else
+                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
                 }
                 else
                 {
-                    try
+                    ExchangeUser result = GetUser(alias);
+                    if (result.upn.CompareTo("") == 0)
                     {
-                        bool r = ExchangeRepo.RemoveMailbox(alias);
-                        if (r && result.has_vpn)
-                        {
-                            r = ExchangeRepo.RemoveADUser(alias + "-vpn");
-                        }
-                        if (r)
-                            WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
-                        else
-                            WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
                     }
-                    catch (Exception e)
+                    else
                     {
-                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.InternalServerError;
-                        return MessageBuilder.CreateResponseMessage(e.Message);
+                        try
+                        {
+                            bool r = ExchangeRepo.RemoveMailbox(alias);
+                            if (r && result.has_vpn)
+                            {
+                                r = ExchangeRepo.RemoveADUser(alias + "-vpn");
+                            }
+                            if (r)
+                                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
+                            else
+                                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                        }
+                        catch (Exception e)
+                        {
+                            WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.InternalServerError;
+                            return MessageBuilder.CreateResponseMessage(e.Message);
+                        }
                     }
                 }
+                
             }
 
             return MessageBuilder.CreateResponseMessage(true);
@@ -287,6 +325,36 @@ namespace TALHO
                 return MessageBuilder.CreateResponseMessage(DistributionRepo.CreateMailContact(newContact.cn, newContact.email, newContact.ou));
             }
             catch (Exception e)
+            {
+                string message = "";
+                while (e != null)
+                {
+                    message += e.Message;
+                    e = e.InnerException;
+                }
+
+                return MessageBuilder.CreateResponseMessage(message);
+            }
+        }
+
+        [OperationContract]
+        [WebGet(UriTemplate = "{alias}/contact?email={email}&dn={displayName}")]
+        public Message GetMailContact(string alias, string email, string displayName)
+        {
+            try
+            {
+                ExchangeUser user = new ExchangeUser() { alias = alias, email = email, cn = displayName.Replace('+', ' ') };
+
+                ExchangeUser foundUser = ExchangeRepo.GetMailContact(user);
+
+                if (foundUser == null)
+                {
+                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;                
+                }
+
+                return MessageBuilder.CreateResponseMessage(foundUser);
+            }
+            catch(Exception e)
             {
                 string message = "";
                 while (e != null)
