@@ -107,8 +107,8 @@ namespace TALHO
             attributes.Add("sn", xml_doc.SelectSingleNode("/ExchSvc/sn") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/sn").InnerText);
             attributes.Add("changePwd", xml_doc.SelectSingleNode("/ExchSvc/changePwd") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/changePwd").InnerText);
             attributes.Add("isVPN", xml_doc.SelectSingleNode("/ExchSvc/isVPN") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/isVPN").InnerText);
-            attributes.Add("acctDisabled", xml_doc.SelectSingleNode("/ExchSvc/acctDisabled") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/acctDisabled").InnerText);
-            attributes.Add("pwdExpires", xml_doc.SelectSingleNode("/ExchSvc/pwdExpires") == null ? "1" : xml_doc.SelectSingleNode("/ExchSvc/pwdExpires").InnerText);
+            attributes.Add("acctDisabled", xml_doc.SelectSingleNode("/ExchSvc/acctDisabled") == null ? "1" : xml_doc.SelectSingleNode("/ExchSvc/acctDisabled").InnerText);
+            attributes.Add("pwdExpires", xml_doc.SelectSingleNode("/ExchSvc/pwdExpires") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/pwdExpires").InnerText);
             attributes.Add("ou", xml_doc.SelectSingleNode("/ExchSvc/ou") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/ou").InnerText);
             attributes.Add("vpnUsr", xml_doc.SelectSingleNode("/ExchSvc/vpnUsr") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/vpnUsr").InnerText);
 
