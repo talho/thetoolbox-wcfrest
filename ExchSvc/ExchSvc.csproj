@@ -83,8 +83,8 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DistributionGroup.cs" />
-    <Compile Include="ExchangeUser.cs" />
+    <Compile Include="DistributionRepo.cs" />
+    <Compile Include="ExchangeRepo.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>

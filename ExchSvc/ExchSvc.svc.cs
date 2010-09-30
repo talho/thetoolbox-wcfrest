@@ -43,15 +43,15 @@ namespace TALHO
         //         int per_page     - Results per page to return, defaults to 10
         // method: Web Get
         // return: ExchangeUsers Object
-        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}&vpn_only={vpn_only}")]
-        public Message GetCollection(int current_page, int per_page, bool vpn_only)
+        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}&vpn_only={vpn_only}&ou={ou}")]
+        public Message GetCollection(int current_page, int per_page, bool vpn_only, string ou)
         {
             try
             {
                 current_page = current_page < 1 ? 1 : current_page;
                 per_page = per_page < 1 ? 10 : per_page;
                 ExchangeUserShorter users = new ExchangeUserShorter();
-                string result = ExchangeRepo.GetUser("", current_page, per_page, vpn_only);
+                string result = ExchangeRepo.GetUser("", current_page, per_page, vpn_only, HttpUtility.UrlDecode(ou));
 
                 users = XmlSerializationHelper.Deserialize<ExchangeUserShorter>(result);
                                 
@@ -184,11 +184,11 @@ namespace TALHO
             string result = null;
             if (alias.IndexOf("-vpn") != -1)
             {
-                result = ExchangeRepo.GetUser(alias, 0, 0, true);
+                result = ExchangeRepo.GetUser(alias, 0, 0, true, "");
             }
             else
             {
-                result = ExchangeRepo.GetUser(alias, 0, 0, false);
+                result = ExchangeRepo.GetUser(alias, 0, 0, false, "");
             }
             
             if (result == null || result.IndexOf("Error") != -1)
