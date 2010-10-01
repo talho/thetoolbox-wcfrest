@@ -69,7 +69,7 @@ namespace TALHO
         public Message Get(string identity)
         {
                 identity = HttpUtility.UrlDecode(identity);
-                string result = DistributionRepo.GetDistributionGroup(identity, 0, 0);
+                string result = DistributionRepo.GetDistributionGroup(identity, 0, 0, "");
             try
             {
                 if (result == null || result.IndexOf("Error") != -1)
@@ -97,8 +97,8 @@ namespace TALHO
             }
         }
         
-        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}")]
-        public Message GetAll(int current_page = 0, int per_page = 0)
+        [WebGet(UriTemplate = "?page={current_page}&per_page={per_page}&ou={ou}")]
+        public Message GetAll(int current_page = 0, int per_page = 0, string ou = "")
         {
             try
             {
@@ -106,7 +106,7 @@ namespace TALHO
                 //per_page = per_page < 1 ? 10 : per_page;
                 DistributionGroupsShorter shorty = new DistributionGroupsShorter();
                 
-                string result = DistributionRepo.GetDistributionGroup("", current_page, per_page);
+                string result = DistributionRepo.GetDistributionGroup("", current_page, per_page, ou);
 
                 shorty = XmlSerializationHelper.Deserialize<DistributionGroupsShorter>(result);
                   
@@ -185,82 +185,5 @@ namespace TALHO
                 return MessageBuilder.CreateResponseMessage(message);
             }
         }
-
-        // CreateMailContact
-        // desc: Method creates a new mail contact
-        // params: string name  - Name of mail contact
-        //         string email - Email of mail contact
-        //         string ou    - Name of Organizational Unit to create mail contact
-        // method: Web Post HTTP/XML
-        // return: void, method sets WebOperationContact status code to OK or Not Found
-        /*
-        [OperationContract]
-        [WebInvoke(UriTemplate = "/{identity}/create_mail_contact", Method = "POST", BodyStyle = WebMessageBodyStyle.Bare, RequestFormat = WebMessageFormat.Xml)]
-        public void CreateMailContact()
-        {
-            //begin read in xml
-            StringWriter sw = new StringWriter();
-            XmlTextWriter xtw = new XmlTextWriter(sw);
-            OperationContext.Current.RequestContext.RequestMessage.WriteMessage(xtw);
-            xtw.Flush();
-            xtw.Close();
-            XmlTextReader xtr = new XmlTextReader(new StringReader(sw.ToString()));
-            string s = xtr.ReadElementString("Binary");
-            string s1 = System.Text.ASCIIEncoding.ASCII.GetString(System.Convert.FromBase64String(s));
-            System.Xml.XmlDocument xml_doc = new System.Xml.XmlDocument();
-            xml_doc.LoadXml(@s1);
-
-            //read in attributes from xml_doc, store them in Dictionary variable attributes
-            string name  = xml_doc.SelectSingleNode("/distribution-group/name") == null ? "" : xml_doc.SelectSingleNode("/distribution-group/name").InnerText;
-            string email = xml_doc.SelectSingleNode("/distribution-group/email") == null ? "" : xml_doc.SelectSingleNode("/distribution-group/email").InnerText;
-            string ou = xml_doc.SelectSingleNode("/distribution-group/email") == null ? "" : xml_doc.SelectSingleNode("/distribution-group/email").InnerText;
-
-            bool r = DistributionGroup.CreateMailContact(name, email, ou);
-            if (r)
-                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.OK;
-            else
-                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
-        }*/
-
-        //[WebGet(UriTemplate = "/GetAllTest?page={current_page}&per_page={per_page}")]
-        //public DistributionGroups GetAllTest(int current_page, int per_page)
-        //{
-        //    DistributionGroupCollection groups = null;
-        //    try
-        //    {
-        //        current_page = current_page < 1 ? 1 : current_page;
-        //        per_page = per_page < 1 ? 10 : per_page;
-        //        string result = DistributionRepo.GetDistributionGroup("", current_page, per_page);
-        //        string[] seperator = new string[1];
-        //        seperator[0] = "THEWORLDSLARGESTSEPERATOR";
-        //        string[] results = result.Split(seperator, StringSplitOptions.RemoveEmptyEntries);
-        //        result = results[0];
-
-        //        //groups = new DistributionGroupCollection() { per_page = 1, total_entries = 1, current_page = 1 };
-        //        //groups.Add(new DistributionGroup() { error = result });
-
-        //        XmlSerializer serializer = new XmlSerializer(typeof(DistributionGroupCollection));
-        //        StringReader textReader = new StringReader(result);
-        //        groups = (DistributionGroupCollection)serializer.Deserialize(textReader);
-        //        groups.current_page = current_page < 1 ? 1 : current_page;
-        //        groups.per_page = per_page < 1 ? 10 : per_page;
-        //        groups.total_entries = Int32.Parse(results[1]);
-                
-        //        textReader.Close();
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        DistributionGroup group = new DistributionGroup();
-        //        while (e != null)
-        //        {
-        //            group.error += e.Message;
-        //            e = e.InnerException;
-        //        }
-        //        groups = new DistributionGroupCollection() { total_entries = 1, per_page = 1, current_page = 1};
-        //        groups.Add(group);
-        //    }
-
-        //    return groups.toXML();
-        //}
     }
 }
