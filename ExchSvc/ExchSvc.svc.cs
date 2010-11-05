@@ -70,7 +70,7 @@ namespace TALHO
         }
 
         // Create()
-        // desc: Creates user in exchange.  If isVPN flag is set, create user in AD only under OU=VPN,OU=TALHO and with "-vpn" appended to their alias/identity
+        // desc: Creates user in exchange.  If vpnUsr flag is set, create user in AD only under OU=VPN,OU=TALHO and with "-vpn" appended to their alias/identity
         // params: XML post from the client server
         // method: Web Post HTTP/XML
         // return: Serialized XML representation of ExchangeUser object
@@ -82,7 +82,7 @@ namespace TALHO
             StringWriter sw     = new StringWriter();
             ExchangeUser user = new ExchangeUser();
             XmlTextWriter xtw   = new XmlTextWriter(sw);
-            string activeResult = "";
+            string userResult = "";
             OperationContext.Current.RequestContext.RequestMessage.WriteMessage(xtw);
             xtw.Flush();
             xtw.Close(); 
@@ -106,51 +106,41 @@ namespace TALHO
             attributes.Add("password", xml_doc.SelectSingleNode("/ExchSvc/password") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/password").InnerText);
             attributes.Add("sn", xml_doc.SelectSingleNode("/ExchSvc/sn") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/sn").InnerText);
             attributes.Add("changePwd", xml_doc.SelectSingleNode("/ExchSvc/changePwd") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/changePwd").InnerText);
-            attributes.Add("isVPN", xml_doc.SelectSingleNode("/ExchSvc/isVPN") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/isVPN").InnerText);
             attributes.Add("acctDisabled", xml_doc.SelectSingleNode("/ExchSvc/acctDisabled") == null ? "1" : xml_doc.SelectSingleNode("/ExchSvc/acctDisabled").InnerText);
             attributes.Add("pwdExpires", xml_doc.SelectSingleNode("/ExchSvc/pwdExpires") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/pwdExpires").InnerText);
             attributes.Add("ou", xml_doc.SelectSingleNode("/ExchSvc/ou") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/ou").InnerText);
+            attributes.Add("securityGroup", xml_doc.SelectSingleNode("/ExchSvc/securityGroup") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/securityGroup").InnerText);
+            attributes.Add("useOAB", xml_doc.SelectSingleNode("/ExchSvc/useOAB") == null ? "" : xml_doc.SelectSingleNode("/ExchSvc/useOAB").InnerText);
             attributes.Add("vpnUsr", xml_doc.SelectSingleNode("/ExchSvc/vpnUsr") == null ? "0" : xml_doc.SelectSingleNode("/ExchSvc/vpnUsr").InnerText);
-
-            
+                        
             if (attributes["vpnUsr"] == "true")
             {
                 attributes["alias"]          = attributes["alias"] + "-vpn";
                 attributes["upn"]            = attributes["upn"].Replace("@", "-vpn@");
-                attributes["dn"]             = attributes["dn"].Replace("OU=TALHO", "OU=VPN,OU=TALHO");
+                attributes["dn"]             = attributes["dn"].Replace("OU=" + attributes["ou"], "OU=VPN,OU=" + attributes["ou"]);
                 attributes["samAccountName"] = attributes["samAccountName"] + "-vpn";
-                activeResult                 = ExchangeRepo.NewADUser(attributes);
-                if (activeResult.IndexOf("Error") != -1)
-                {
-                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
-                    return MessageBuilder.CreateResponseMessage(activeResult);
-                }
-                user = XmlSerializationHelper.Deserialize<ExchangeUser>(activeResult);
+                //Call NewADUser on ExchangeUser class
+                userResult                 = ExchangeRepo.NewADUser(attributes);
             }
             else
             {
                 //Call NewExchangeUser on ExchangeUser class
-                string exchangeResult = ExchangeRepo.NewExchangeUser(attributes);
-                if (exchangeResult.IndexOf("Error") != -1)
-                {
-                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
-                    return MessageBuilder.CreateResponseMessage(exchangeResult);
-                 }
-                if (attributes["isVPN"] == "1")
-                {
-                    attributes["alias"]          = attributes["alias"] + "-vpn";
-                    attributes["upn"]            = attributes["upn"].Replace("@", "-vpn@");
-                    attributes["dn"]             = attributes["dn"].Replace("OU=TALHO", "OU=VPN,OU=TALHO");
-                    attributes["samAccountName"] = attributes["samAccountName"] + "-vpn";
-                    activeResult                 = ExchangeRepo.NewADUser(attributes);
-                    if (activeResult.IndexOf("Error") != -1)
-                    {
-                        WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
-                        return MessageBuilder.CreateResponseMessage(activeResult);
-                    }
-                }
-                user = XmlSerializationHelper.Deserialize<ExchangeUser>(exchangeResult);
+                userResult = ExchangeRepo.NewExchangeUser(attributes);
             }
+
+            if (userResult.IndexOf("Error") != -1)
+            {
+                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                return MessageBuilder.CreateResponseMessage(userResult);
+            }
+            //Add User to Security Group
+            string groupResult = ExchangeRepo.AddGroupMember(attributes);
+            if (groupResult.IndexOf("Error") != -1)
+            {
+                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                return MessageBuilder.CreateResponseMessage(groupResult);
+            }
+            user = XmlSerializationHelper.Deserialize<ExchangeUser>(userResult);
             return MessageBuilder.CreateResponseMessage(user);
         }
 

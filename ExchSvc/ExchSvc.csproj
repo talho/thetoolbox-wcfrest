@@ -22,7 +22,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DeployIisAppPath>Default Web Site</DeployIisAppPath>
+    <DeployIisAppPath>TheToolbox</DeployIisAppPath>
     <DesktopBuildPackageLocation>obj\Debug\Package\ExchSvc.zip</DesktopBuildPackageLocation>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -33,7 +33,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DesktopBuildPackageLocation>obj\Release\Package\ExchSvc.zip</DesktopBuildPackageLocation>
-    <DeployIisAppPath>Default Web Site</DeployIisAppPath>
+    <DeployIisAppPath>TheToolbox</DeployIisAppPath>
   </PropertyGroup>
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
