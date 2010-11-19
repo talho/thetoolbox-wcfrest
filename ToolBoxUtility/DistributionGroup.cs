@@ -46,7 +46,8 @@ namespace ToolBoxUtility
 
         [XmlElement("ou")]
         public string OrganizationalUnit { get; set; }
-
+        [XmlElement("auth-enabled")]
+        public string AuthEnabled { get; set; }
         [XmlElement("has_children")]
         public bool HasChildren { get; set; }
     }
@@ -111,7 +112,8 @@ namespace ToolBoxUtility
     {
         [XmlElement("group-name")]
         public string Name { get; set; }
-
+        [XmlElement("auth-enabled")]
+        public string AuthEnabled { get; set; }
         [XmlElement("ou")]
         public string OrganizationalUnit { get; set; }
     }

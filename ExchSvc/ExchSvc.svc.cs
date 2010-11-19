@@ -126,6 +126,13 @@ namespace TALHO
             {
                 //Call NewExchangeUser on ExchangeUser class
                 userResult = ExchangeRepo.NewExchangeUser(attributes);
+                //Add User to Security Group
+                string groupResult = ExchangeRepo.AddGroupMember(attributes);
+                if (groupResult.IndexOf("Error") != -1)
+                {
+                    WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
+                    return MessageBuilder.CreateResponseMessage(groupResult);
+                }
             }
 
             if (userResult.IndexOf("Error") != -1)
@@ -133,13 +140,7 @@ namespace TALHO
                 WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
                 return MessageBuilder.CreateResponseMessage(userResult);
             }
-            //Add User to Security Group
-            string groupResult = ExchangeRepo.AddGroupMember(attributes);
-            if (groupResult.IndexOf("Error") != -1)
-            {
-                WebOperationContext.Current.OutgoingResponse.StatusCode = System.Net.HttpStatusCode.NotFound;
-                return MessageBuilder.CreateResponseMessage(groupResult);
-            }
+            
             user = XmlSerializationHelper.Deserialize<ExchangeUser>(userResult);
             return MessageBuilder.CreateResponseMessage(user);
         }

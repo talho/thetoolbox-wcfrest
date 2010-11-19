@@ -37,11 +37,11 @@ namespace TALHO
         //         string ou         - Name of Organizational Unit to create Organizational Group in
         // method: public
         // return: bool
-        public static string CreateDistributionGroup(string group_name, string ou)
+        public static string CreateDistributionGroup(string group_name, string ou, string auth_enabled)
         {
             string Results;
             PowerShellComponent.ManagementCommands objManage = new PowerShellComponent.ManagementCommands();
-            Results = objManage.CreateDistributionGroup(group_name, ou);
+            Results = objManage.CreateDistributionGroup(group_name, ou, auth_enabled);
             objManage = null;
             return Results;
         }

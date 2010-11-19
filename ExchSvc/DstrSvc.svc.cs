@@ -50,7 +50,7 @@ namespace TALHO
             DistributionGroupCreationParams parms = XmlSerializationHelper.Deserialize<DistributionGroupCreationParams>(bodyXml);
 
             //begin read in xml           
-            string result = DistributionRepo.CreateDistributionGroup(parms.Name, parms.OrganizationalUnit);
+            string result = DistributionRepo.CreateDistributionGroup(parms.Name, parms.OrganizationalUnit, parms.AuthEnabled);
             DistributionGroup group = XmlSerializationHelper.Deserialize<DistributionGroup>(result);
             if (group.error != "")
             {
